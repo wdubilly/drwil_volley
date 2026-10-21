@@ -8,8 +8,9 @@ const WIN_SCORE = 7;
 const STEP = 1000 / 60;
 
 const GRAVITY_P = 0.28, JUMP = -5.0, SPEED = 1.7;
-const GRAVITY_B = 0.11, BALL_R = 5, BALL_MAX = 6.2;
+const GRAVITY_B = 0.075, BALL_R = 5, BALL_MAX = 4.4;
 const PW = 12, PH = 26;
+const AI_SPEED = 0.6, AI_ERR = 16, AI_REACT = 18;
 
 const screen = document.getElementById('screen');
 const sctx = screen.getContext('2d');
@@ -127,6 +128,7 @@ const state = {
 };
 
 function resetRound() {
+  aiTarget = null;
   const [a, b] = state.p;
   a.x = W * 0.25 - PW / 2; b.x = W * 0.75 - PW / 2;
   a.y = b.y = GROUND - PH;
@@ -171,8 +173,8 @@ function clampSpeed(bl) {
   if (s > BALL_MAX) { bl.vx *= BALL_MAX / s; bl.vy *= BALL_MAX / s; }
 }
 
-function updatePlayer(p, left, right, jump) {
-  p.vx = (right ? SPEED : 0) - (left ? SPEED : 0);
+function updatePlayer(p, left, right, jump, speed = SPEED) {
+  p.vx = (right ? speed : 0) - (left ? speed : 0);
   if (p.vx) p.face = Math.sign(p.vx);
   if (jump && p.onGround) { p.vy = JUMP; p.onGround = false; sfx.jump(); }
   p.vy += GRAVITY_P;
@@ -196,6 +198,7 @@ function predictBall(bl, targetY) {
   return { x, t: 400 };
 }
 
+let aiTarget = null, aiWait = 0;
 function aiControl(p, bl) {
   const homeX = W * 0.75;
   const inMyHalf = bl.x > NET_X || (bl.vx > 0.3 && bl.x > W * 0.3);
@@ -205,12 +208,16 @@ function aiControl(p, bl) {
     if (c < homeX - 4) right = true; else if (c > homeX + 4) left = true;
     return { left, right, jump };
   }
-  const pred = predictBall(bl, GROUND - PH - 4);
-  const aim = Math.min(W - PW / 2, Math.max(NET_X + 10, pred.x + 6)); // légèrement derrière pour renvoyer vers l'avant
+  if (aiTarget === null || --aiWait <= 0) {
+    const pred = predictBall(bl, GROUND - PH - 4);
+    aiTarget = pred.x + 6 + (Math.random() - 0.5) * 2 * AI_ERR;
+    aiWait = AI_REACT;
+  }
+  const aim = Math.min(W - PW / 2, Math.max(NET_X + 10, aiTarget));
   const c = p.x + PW / 2;
   if (c < aim - 3) right = true; else if (c > aim + 3) left = true;
   const near = Math.abs(bl.x - c) < 22 && bl.y < p.y + 6 && bl.y > p.y - 50;
-  if (near && p.onGround && bl.vy > -1) jump = true;
+  if (near && p.onGround && bl.vy > -1 && Math.random() < 0.35) jump = true;
   return { left, right, jump };
 }
 
@@ -224,7 +231,7 @@ function stepPlay() {
 
   if (state.vsAI) {
     const c = aiControl(b, bl);
-    updatePlayer(b, c.left, c.right, c.jump);
+    updatePlayer(b, c.left, c.right, c.jump, SPEED * AI_SPEED);
   } else {
     updatePlayer(b, keys['ArrowLeft'], keys['ArrowRight'], keys['ArrowUp']);
   }
@@ -256,8 +263,8 @@ function stepPlay() {
     const rvx = bl.vx - p.vx, rvy = bl.vy - p.vy;
     const dot = rvx * h.nx + rvy * h.ny;
     if (dot < 0) {
-      bl.vx = rvx - 1.9 * dot * h.nx + p.vx * 0.9;
-      bl.vy = rvy - 1.9 * dot * h.ny + p.vy * 0.5;
+      bl.vx = rvx - 1.6 * dot * h.nx + p.vx * 0.9;
+      bl.vy = rvy - 1.6 * dot * h.ny + p.vy * 0.5;
     }
     // Garantit un renvoi vif et vers l'autre côté du filet
     const toward = p.side === 0 ? 1 : -1;
