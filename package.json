@@ -1,5 +1,26 @@
 {
   "devDependencies": {
-    "drwil": "https://github.com/wdubilly/drwil/releases/download/v0.6.9/drwil-0.6.9.tgz"
+    "drwil": "https://github.com/wdubilly/drwil/releases/download/v0.6.9/drwil-0.6.9.tgz",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "name": "block-volley",
+  "version": "1.0.0",
+  "description": "Jeu de volley-ball ambiance Minecraft",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.wdubilly.blockvolley",
+    "productName": "Block Volley",
+    "files": [
+      "main.js",
+      "src/**/*"
+    ],
+    "win": {
+      "target": "portable"
+    }
   }
 }
